@@ -25,7 +25,7 @@ const contactSchema = new Schema(
 
 contactSchema.post("save", middlewares.mongooseError);
 
-export const Contact = model("model", contactSchema);
+export const Contact = model("contact", contactSchema);
 
 const createContactSchema = Joi.object({
   name: Joi.string().min(3).max(20).required(),
