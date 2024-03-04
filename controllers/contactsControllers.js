@@ -1,71 +1,80 @@
-import {
-  listContacts,
-  getContactById,
-  removeContact,
-  addContact,
-  updateContacts,
-} from "../services/contactsServices.js";
+
+
+import { Contact } from "../models/contactModel.js";
+
 import HttpError from "../helpers/HttpError.js";
-import { error } from "console";
+import wrapper from "../helpers/wrapper.js";
 
-export const getAllContacts = async (req, res, next) => {
+
+const getAllContacts = async (_, res) => {
   try {
-    const result = await listContacts();
-    res.json(result);
+    const resultAllContacts = await Contact.find();
+    res.json(resultAllContacts);
   } catch (error) {
-    next(error);
+    // Обробка помилок бази даних
+    console.error("Error fetching contacts:", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-export const getOneContact = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const result = await getContactById(id);
-    if (!result) {
-      throw HttpError(404, "Not found");
-    }
-    res.json(result);
-  } catch (error) {
-    next(error);
+
+const getOneContact =  async (req, res) => {
+  const { id } = req.params;
+  const resultContactById = await Contact.findById(id);
+
+  if (!resultContactById) {
+    throw HttpError(404, "Not found");
   }
+  res.json(resultContactById);
 };
 
-export const deleteContact = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const result = await removeContact(id);
-    if (!result) {
-      throw HttpError(404, "Not found");
-    }
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
+
+const createContact = async (req, res) => {
+  const resultNewContact = await Contact.create(req.body);
+  res.status(201).json(resultNewContact);
 };
 
-export const createContact = async (req, res, next) => {
-    try {
-      const { name, email, phone} = req.body
-      const result = await addContact({ name, email, phone });
-      res.status(201).json(result);
-    } catch (error) {
-      next(error);
-    }
-  };
 
-  export const updateContact = async (req, res, next) => {
-    try {
-      if (Object.keys(req.body).length === 0) {
-        throw HttpError(400, "Body must have at least one field");
-      }
-      const { id } = req.params;
-      const result = await updateContacts(id, req.body);
-  
-      if (!result) {
-        throw HttpError(404);
-      }
-      res.json(result);
-    } catch (error) {
-      next(error);
-    }
-  };
+const updateContact = async (req, res) => {
+  const { id } = req.params;
+  const resultUpdate = await Contact.findByIdAndUpdate(id, req.body, {
+    new: true,
+  });
+
+  if (!resultUpdate) {
+    throw HttpError(404, "Not found");
+  }
+  res.json(resultUpdate);
+};
+
+const updateFavorite = async (req, res) => {
+  const { id } = req.params;
+  const resultFavorite = await Contact.findByIdAndUpdate(id, req.body, {
+    new: true,
+  });
+
+  if (!resultFavorite) {
+    throw HttpError(404, "Not found");
+  }
+  res.json(resultFavorite);
+};
+
+const deleteContact = async (req, res) => {
+  const { id } = req.params;
+  const resultDelete = await Contact.findByIdAndDelete(id);
+
+  if (!resultDelete) {
+    throw HttpError(404, "Not found");
+  }
+  res.json(resultDelete);
+};
+
+
+export default {
+  getAllContacts: wrapper(getAllContacts),
+  getOneContact: wrapper(getOneContact),
+  deleteContact: wrapper(deleteContact),
+  createContact: wrapper(createContact),
+  updateContact: wrapper(updateContact),
+  updateFavorite: wrapper(updateFavorite)
+}
