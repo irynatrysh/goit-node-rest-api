@@ -1,7 +1,8 @@
+
 import { Schema, model } from "mongoose";
 import Joi from "joi";
 
-import { middlewares } from "../api/index.js";
+import { mongoError } from "../controllers/index.js";
 
 const contactSchema = new Schema(
   {
@@ -19,13 +20,17 @@ const contactSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: "user",
+  }
+
   },
   { versionKey: false, timestamps: true }
 );
 
-contactSchema.post("save", middlewares.mongooseError);
+contactSchema.post("save", mongoError);
 
-export const Contact = model("contact", contactSchema);
 
 const createContactSchema = Joi.object({
   name: Joi.string().min(3).max(20).required(),
@@ -52,3 +57,5 @@ export const schemas = {
   updateContactSchema,
   updateFavoriteSchema,
 };
+
+export const Contact = model("contact", contactSchema);

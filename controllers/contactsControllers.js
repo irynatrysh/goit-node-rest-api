@@ -1,26 +1,33 @@
-
-
-import { Contact } from "../models/contactModel.js";
-
+import { Contact } from "../models/contact.js";
+import wrapper from "../helpers/wrap.js";
 import HttpError from "../helpers/HttpError.js";
-import wrapper from "../helpers/wrapper.js";
 
+const getAllContacts = async (req, res) => {
+  const { _id: owner } = req.user;
+  const { page, limit = 20, favorite } = req.query;
+  const skip = (page - 1) * limit;
 
-const getAllContacts = async (_, res) => {
-  try {
-    const resultAllContacts = await Contact.find();
-    res.json(resultAllContacts);
-  } catch (error) {
-    // Обробка помилок бази даних
-    console.error("Error fetching contacts:", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
+  const query = { owner };
+
+  if (favorite !== undefined) {
+    query.favorite = favorite === "true";
   }
+
+  const resultAllContacts = await Contact.find(query, "-createdAt -updatedAt", {
+    skip,
+    limit,
+  }).populate("owner", "email");
+  res.json(resultAllContacts);
 };
 
-
-const getOneContact =  async (req, res) => {
+const getOneContact = async (req, res) => {
   const { id } = req.params;
-  const resultContactById = await Contact.findById(id);
+  const { _id: owner } = req.user;
+
+  const resultContactById = await Contact.findOne(
+    { _id: id, owner },
+    "-createdAt -updatedAt"
+  );
 
   if (!resultContactById) {
     throw HttpError(404, "Not found");
@@ -28,18 +35,23 @@ const getOneContact =  async (req, res) => {
   res.json(resultContactById);
 };
 
-
 const createContact = async (req, res) => {
-  const resultNewContact = await Contact.create(req.body);
+  const { _id: owner } = req.user;
+
+  const resultNewContact = await Contact.create({ ...req.body, owner });
+
   res.status(201).json(resultNewContact);
 };
 
-
 const updateContact = async (req, res) => {
   const { id } = req.params;
+  const { _id: owner } = req.user;
+
   const resultUpdate = await Contact.findByIdAndUpdate(id, req.body, {
     new: true,
-  });
+  })
+    .where("owner")
+    .equals(owner);
 
   if (!resultUpdate) {
     throw HttpError(404, "Not found");
@@ -49,9 +61,13 @@ const updateContact = async (req, res) => {
 
 const updateFavorite = async (req, res) => {
   const { id } = req.params;
+  const { _id: owner } = req.user;
+
   const resultFavorite = await Contact.findByIdAndUpdate(id, req.body, {
     new: true,
-  });
+  })
+    .where("owner")
+    .equals(owner);
 
   if (!resultFavorite) {
     throw HttpError(404, "Not found");
@@ -61,7 +77,11 @@ const updateFavorite = async (req, res) => {
 
 const deleteContact = async (req, res) => {
   const { id } = req.params;
-  const resultDelete = await Contact.findByIdAndDelete(id);
+  const { _id: owner } = req.user;
+
+  const resultDelete = await Contact.findByIdAndDelete(id)
+    .where("owner")
+    .equals(owner);
 
   if (!resultDelete) {
     throw HttpError(404, "Not found");
@@ -69,12 +89,11 @@ const deleteContact = async (req, res) => {
   res.json(resultDelete);
 };
 
-
 export default {
   getAllContacts: wrapper(getAllContacts),
   getOneContact: wrapper(getOneContact),
-  deleteContact: wrapper(deleteContact),
   createContact: wrapper(createContact),
   updateContact: wrapper(updateContact),
-  updateFavorite: wrapper(updateFavorite)
-}
+  updateFavorite: wrapper(updateFavorite),
+  deleteContact: wrapper(deleteContact),
+};
