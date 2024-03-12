@@ -6,7 +6,7 @@ import dotenv from "dotenv";
 import contactsRouter from "./routes/contactsRouter.js";
 import usersRouter from "./routes/usersRouter.js";
 
-
+//const { PORT = 3000 } = process.env;
 dotenv.config();
 
 export const app = express();
@@ -27,3 +27,6 @@ app.use((err, req, res, next) => {
   res.status(status).json({ message });
 });
 
+//app.listen(PORT, () => {
+  //console.log(`Server is running. Use our API on port: ${PORT}`);
+//});
