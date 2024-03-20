@@ -7,9 +7,15 @@ import wrapper from "../helpers/wrap.js";
 
 import { User } from "../models/user.js";
 
+import fs from "fs/promises";
+import path from "path";
+import Jimp from "jimp";
+import gravatar from "gravatar";
+
 dotenv.config();
 
 const { SECRET_KEY } = process.env;
+const avatarDir = path.resolve("public", "avatars");
 
 const registerUser = async (req, res) => {
   const { email, password } = req.body;
@@ -20,8 +26,13 @@ const registerUser = async (req, res) => {
   }
 
   const hashPassword = await bcrypt.hash(password, 10);
+  const avatarURL = gravatar.url(email);
 
-  const newUser = await User.create({ ...req.body, password: hashPassword });
+  const newUser = await User.create({
+    ...req.body,
+    password: hashPassword,
+    avatarURL
+  });
   const { email: userEmail, subscription } = newUser;
 
   res.status(201).json({
@@ -51,7 +62,7 @@ const login = async (req, res) => {
     id: user._id,
   };
 
-  const token = jwt.sign(payload, SECRET_KEY, { expiresIn: "23h" });
+  const token = jwt.sign(payload, SECRET_KEY, { expiresIn: "12h" });
   await User.findByIdAndUpdate(user._id, { token });
 
   res.json({
@@ -91,6 +102,35 @@ const logout = async (req, res) => {
   ({message: "Logout success"})
 };
 
+const updateAvatar = async (req, res) => {
+  const { _id } = req.user;
+
+  const userUpdateAvatar = await User.findById(_id);
+
+  if (!userUpdateAvatar) {
+    throw HttpError(401, "Unauthorized");
+  }
+
+  if (!req.file) {
+    throw HttpError(400, "No file uploaded");
+  }
+
+  const { path: tempUpload, originalname } = req.file;
+
+  const filename = `${_id}_${originalname}`;
+  const resultUpload = path.resolve(avatarDir, filename);
+
+  const image = await Jimp.read(tempUpload);
+  image.resize(250, 250).write(tempUpload);
+
+  await fs.rename(tempUpload, resultUpload);
+
+  const avatarURL = `/avatars/${filename}`;
+
+  await User.findByIdAndUpdate(_id, { avatarURL });
+
+  res.json({ avatarURL });
+}
 
 export default {
   registerUser: wrapper(registerUser),
@@ -98,4 +138,5 @@ export default {
   getCurrent: wrapper(getCurrent),
   updateSubscription: wrapper(updateSubscription),
   logout: wrapper(logout),
+  updateAvatar: wrapper(updateAvatar),
 };
