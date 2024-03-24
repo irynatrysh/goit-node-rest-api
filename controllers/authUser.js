@@ -1,6 +1,8 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import sgMail from "@sendgrid/mail";
+import crypto from "node:crypto";
 
 import HttpError from "../helpers/HttpError.js";
 import wrapper from "../helpers/wrap.js";
@@ -14,8 +16,13 @@ import gravatar from "gravatar";
 
 dotenv.config();
 
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 const { SECRET_KEY } = process.env;
+
+
 const avatarDir = path.resolve("public", "avatars");
+
+//REGISTER USER
 
 const registerUser = async (req, res) => {
   const { email, password } = req.body;
@@ -26,14 +33,37 @@ const registerUser = async (req, res) => {
   }
 
   const hashPassword = await bcrypt.hash(password, 10);
+  const verifyToken = crypto.randomUUID();
+
+ console.log(verifyToken);
+
+  const msg = {
+  to: 'irisha.trysh@gmail.com',
+  from: 'liam@gmail.com',
+  subject: 'Welcome to contacts',
+  text: `To confirm your registration please click on the <a href="http://localhost:3000/users/register/verify/${verifyToken}">link</a>`,
+  html: `To confirm your registration please open the link <a href="http://localhost:3000/users/register/verify/${verifyToken}">link</a>`,
+  };
+//not sure about link maybe it's should be - user/verify/token, when im change link - my message send seccessfully
+
+//AVATAR
+
   const avatarURL = gravatar.url(email);
+
+//CREATE USER
 
   const newUser = await User.create({
     ...req.body,
-    password: hashPassword,
-    avatarURL
+    password: hashPassword, avatarURL, verifyToken
   });
   const { email: userEmail, subscription } = newUser;
+
+
+  //send EMail
+  sgMail.send(msg)
+  .then(() => console.log('Email sent successfully'))
+  .catch((error) => console.error(error));
+
 
   res.status(201).json({
     user: {
@@ -42,6 +72,9 @@ const registerUser = async (req, res) => {
     },
   });
 };
+
+
+//LOGIN
 
 const login = async (req, res) => {
   const { email, password } = req.body;
@@ -62,7 +95,7 @@ const login = async (req, res) => {
     id: user._id,
   };
 
-  const token = jwt.sign(payload, SECRET_KEY, { expiresIn: "12h" });
+  const token = jwt.sign(payload, SECRET_KEY, { expiresIn: "18h" });
   await User.findByIdAndUpdate(user._id, { token });
 
   res.json({
@@ -70,6 +103,9 @@ const login = async (req, res) => {
     user: { email, subscription: user.subscription },
   });
 };
+
+
+//GET CURRENT
 
 const getCurrent = async(req, res)=> {
     const { email, subscription } = req.user;
@@ -79,6 +115,8 @@ const getCurrent = async(req, res)=> {
         subscription,
     })
 }
+
+//UPDATE SUBSCRIPTION
 
 const updateSubscription = async (req, res) => {
     const { subscription } = req.body;
@@ -93,6 +131,7 @@ const updateSubscription = async (req, res) => {
     res.json(updatedUserSubscription);
   };
   
+  // LOGOUT
 
 const logout = async (req, res) => {
   const { _id } = req.user;
@@ -101,6 +140,8 @@ const logout = async (req, res) => {
   res.status(204).json
   ({message: "Logout success"})
 };
+
+// AVATAR UPDATE
 
 const updateAvatar = async (req, res) => {
   const { _id } = req.user;
@@ -132,6 +173,30 @@ const updateAvatar = async (req, res) => {
   res.json({ avatarURL });
 }
 
+//verifyUser
+
+async function verifyUser (req, res, next) {
+  const { token } = req.params;
+
+  try {
+    const user = await User.findOne({ verifyToken: token });
+    
+    if (user === null)
+      return res.status(404).send({ message: "Not found" });
+
+    if (!user.verify) {
+      return res.status(401).send({ message: "Your account is not verified" });
+    }
+
+    await User.findByIdAndUpdate(user._id, { verify: true, verifyToken:null });
+  
+  res.send({message: "Email confirm successfully"});
+  } catch (error) {
+    next(error);
+  }
+}
+
+
 export default {
   registerUser: wrapper(registerUser),
   login: wrapper(login),
@@ -139,4 +204,5 @@ export default {
   updateSubscription: wrapper(updateSubscription),
   logout: wrapper(logout),
   updateAvatar: wrapper(updateAvatar),
+  verifyUser: wrapper(verifyUser), // add function verifyUser to export
 };

@@ -8,10 +8,10 @@ import {
 
 import { validateBody, authorization, upload } from "../controllers/index.js";
 
+import authControllers from "../controllers/authUser.js";// змінено шлях до імпорту
 
-import authControllers from "../controllers/authUser.js";
-
-const { registerUser, login, logout, getCurrent, updateSubscription, updateAvatar } =
+ 
+const { registerUser, login, logout, getCurrent, updateSubscription, updateAvatar, verifyUser } =
   authControllers;
 
 const usersRouter = express.Router();
@@ -20,9 +20,10 @@ usersRouter.post("/register", validateBody(registerSchema), registerUser);
 
 usersRouter.post("/login", validateBody(loginSchema), login);
 
+usersRouter.post("/logout", authorization, logout);
+
 usersRouter.get("/current", authorization, getCurrent);
 
-usersRouter.post("/logout", authorization, logout);
 
 usersRouter.patch("/",authorization,
   validateBody(updateSubscriptionSchema),
@@ -33,5 +34,6 @@ usersRouter.patch("/avatars", authorization,
   upload.single('avatar'),
   updateAvatar);
 
+usersRouter.get("/verify/:token", verifyUser); //  verifyUser should be with authControllers
 
-export default usersRouter;
+export default usersRouter ;
