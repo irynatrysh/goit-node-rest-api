@@ -39,7 +39,7 @@ const registerUser = async (req, res) => {
 
   const msg = {
   to: 'irisha.trysh@gmail.com',
-  from: 'liam@gmail.com',
+  from: 'irisha.trysh@gmail.com',
   subject: 'Welcome to contacts',
   text: `To confirm your registration please click on the <a href="http://localhost:3000/users/register/verify/${verifyToken}">link</a>`,
   html: `To confirm your registration please open the link <a href="http://localhost:3000/users/register/verify/${verifyToken}">link</a>`,
@@ -196,6 +196,40 @@ async function verifyUser (req, res, next) {
   }
 }
 
+// RESEND VERIFICATION EMAIL
+async function resendVerificationEmail(req, res, next) {
+  try {
+    const { email } = req.body;
+    const verifyToken = crypto.randomUUID(); 
+    const msg = {
+      to: email,
+      from: 'irisha.trysh@gmail.com',
+      subject: 'Welcome to contacts',
+      text: `To confirm your registration please click on the <a href="http://localhost:3000/users/register/verify/${verifyToken}">link</a>`,
+      html: `To confirm your registration please open the link <a href="http://localhost:3000/users/register/verify/${verifyToken}">link</a>`,
+    };
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Перевірте, чи користувач вже підтвердив свою електронну пошту
+    if (user.verify) {
+      return res.status(400).json({ message: "Email already verified" });
+    }
+
+    await sgMail.send(msg);
+  //console.log("Verification email sent successfully.");
+    
+    res.status(200).json({ message: "Verification email sent" });
+  } catch (error) {
+    next(error);
+  }
+}
+
+
 
 export default {
   registerUser: wrapper(registerUser),
@@ -205,4 +239,5 @@ export default {
   logout: wrapper(logout),
   updateAvatar: wrapper(updateAvatar),
   verifyUser: wrapper(verifyUser), // add function verifyUser to export
+  resendVerificationEmail: wrapper(resendVerificationEmail), //add one more medhod to export 
 };
