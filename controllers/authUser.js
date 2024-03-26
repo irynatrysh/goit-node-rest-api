@@ -1,3 +1,4 @@
+//authUser.js
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
@@ -85,6 +86,10 @@ const login = async (req, res) => {
     throw HttpError(401, "Email or password invalid");
   }
 
+  if (!user.verify) {
+    throw HttpError(401, "Your account is not verified");
+  }
+
   const passwordCompare = await bcrypt.compare(password, user.password);
   
   if (!passwordCompare) {
@@ -111,8 +116,7 @@ const getCurrent = async(req, res)=> {
     const { email, subscription } = req.user;
 
     res.json({
-        email,
-        subscription,
+        email, subscription,
     })
 }
 
@@ -137,8 +141,7 @@ const logout = async (req, res) => {
   const { _id } = req.user;
   await User.findByIdAndUpdate(_id, { token: "" });
 
-  res.status(204).json
-  ({message: "Logout success"})
+  res.status(204).json({message: "Logout success"})
 };
 
 // AVATAR UPDATE
@@ -173,7 +176,7 @@ const updateAvatar = async (req, res) => {
   res.json({ avatarURL });
 }
 
-//verifyUser
+//VERIFYUser
 
 async function verifyUser (req, res, next) {
   const { token } = req.params;
@@ -181,11 +184,11 @@ async function verifyUser (req, res, next) {
   try {
     const user = await User.findOne({ verifyToken: token });
     
-    if (user === null)
+    if (!user)
       return res.status(404).send({ message: "Not found" });
 
-    if (!user.verify) {
-      return res.status(401).send({ message: "Your account is not verified" });
+ if (user.verify) {
+      return res.status(400).send({ message: "Email already verified" });
     }
 
     await User.findByIdAndUpdate(user._id, { verify: true, verifyToken:null });

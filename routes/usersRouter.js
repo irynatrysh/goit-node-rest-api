@@ -1,3 +1,4 @@
+// usersRouter.js
 import express from "express";
 
 import {
@@ -34,7 +35,7 @@ usersRouter.patch("/avatars", authorization,
   upload.single('avatar'),
   updateAvatar);
 
-usersRouter.get("/verify/:token", verifyUser); //  verifyUser should be with authControllers
+usersRouter.get("/confirm/:token", verifyUser); //  verifyUser should be with authControllers
 
 usersRouter.post("/verify", resendVerificationEmail);
 
